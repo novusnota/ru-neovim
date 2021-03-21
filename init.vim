@@ -14,11 +14,11 @@
 " vim-gitgutter, latexlivepreview и ещё пару плагинов
 " установил в ~/.config/nvim/pack
 
-""
+"" ----
 """" -----------------------
 """ Общее между Vim и NeoVim
 """" -----------------------
-""
+"" ----
 
 " Прежде, чем начнём, отключим обратную совместимость с vi,
 " старой версией Vim'а. Вообще, наличие файлов
@@ -213,49 +213,6 @@ inoremap <C-Del> <Esc>lvec
 " https://vim.fandom.com/wiki/Quick_generic_option_toggling
 
 " -----------------------------
-" --- Комментирование
-" --- и раскомментирование
-" --- строк в NERDCommenter
-" -----------------------------
-
-" Убираем стандартные сочетания клавиш
-let g:NERDCreateDefaultMappings = 0
-
-" Добавляем пробел после комментария
-let g:NERDSpaceDelims = 1
-
-" Используем компактный синтаксис
-let g:NERDCompactSexyComs = 1
-
-" Align line-wise comment delimiters flush left instead of following code indentation
-let g:NERDDefaultAlign = 'left'
-
-" Разрешаем комментировать пустые строки
-let g:NERDCommentEmptyLines = 1
-
-" Эта настройка будет удалять лишние пробелы после крайнего
-" непробельного символа в строке после раскомментирования
-" Лучше выключить, потому что эта Vim конфигурация и так сама
-" чистит файл (см. функция на ~528 строке)
-let g:NERDTrimTrailingWhitespace = 0
-
-" Разрешаем проверку на то, закомментирована строка или нет
-let g:NERDToggleCheckAllLines = 1
-
-" Комментировать и раскомментировать строку
-" в режиме NORMAL по нажатию Ctrl+/
-nmap <C-_> <Plug>NERDCommenterToggle
-
-" Аналогично, но для режима VISUAL
-vmap <C-_> <Plug>NERDCommenterToggle<CR>gv
-
-" Аналогично, но для INSERT
-" imap <C-_> <Esc><Plug>NERDCommenterTogglella
-
-" По какой-то причине, Vim видит нажатие Ctrl+/, как Ctrl+_
-" Подробнее смотри тут: https://stackoverflow.com/questions/9051837/how-to-map-c-to-toggle-comments-in-vim
-
-" -----------------------------
 " --- Настройка отступов, -----
 " --- переносов и табуляции ---
 " -----------------------------
@@ -310,6 +267,67 @@ vnoremap <silent> > >gv
 vnoremap <silent> < <gv
 
 " -----------------------------
+" --- Сворачивание и ----------
+" --- разворачивание блоков ---
+" --- текста / кода -----------
+" -----------------------------
+
+set foldmethod=indent
+" Default (and max) is 20
+" set foldnestmax=10
+" Make folds, but don't close them by default
+set nofoldenable
+set foldlevel=10
+
+" The command zc will close a fold (if the cursor is in an open fold),
+" and zo will open a fold (if the cursor is in a closed fold).
+" It's easier to just use za which will toggle the current fold (close it if it was open, or open it if it was closed).
+"
+" The commands zc (close), zo (open), and za (toggle) operate on one level of folding, at the cursor.
+" The commands zC, zO and zA are similar, but operate on all folding levels
+" (for example, the cursor line may be in an open fold, which is inside another open fold; typing zC would close all folds at the cursor).
+"
+" The command zr reduces folding by opening one more level of folds throughout the whole buffer
+" (the cursor position is not relevant). Use zR to open all folds.
+"
+" The command zm gives more folding by closing one more level of folds throughout the whole buffer.
+" Use zM to close all folds.
+"
+" https://www.linux.com/training-tutorials/vim-tips-folding-fun/
+" :help z
+" https://unix.stackexchange.com/questions/141097/how-to-enable-and-use-code-folding-in-vim
+" https://vim.fandom.com/wiki/Folding
+" augroup folding
+"   au BufReadPre * setlocal foldmethod=indent
+"   au BufWinEnter * if &fdm == 'indent' | setlocal foldmethod=manual | endif
+" augroup END
+
+" ctrl+f to fold / unfold everything (toggle)
+" https://unix.stackexchange.com/questions/46827/vim-executing-a-key-command-in-a-function
+" https://vi.stackexchange.com/questions/20206/using-a-special-key-in-function
+let s:everyfold_is_open = 1
+function! EveryFoldIsOpen()
+    if s:everyfold_is_open == 1
+        let s:everyfold_is_open = 0
+        execute "normal zM"
+    else
+        let s:everyfold_is_open = 1
+        execute "normal zR"
+    endif
+endfunction
+" nnoremap <silent> <C-f> :call EveryFoldIsOpen()<CR>
+
+function! ToggleFileFolding()
+    if &foldlevel == 0
+        execute "normal zR"
+    else
+        execute "normal zM"
+    endif
+endfunction
+
+nnoremap <silent> <C-f> :call ToggleFileFolding()<CR>
+
+" -----------------------------
 " --- Автодополнения в --------
 " --- режиме INSERT -----------
 " -----------------------------
@@ -348,62 +366,8 @@ set complete+=kspell
 set completeopt=longest,menu
 " :help completeopt
 
-" ~~~~~~~~~
-" Перешёл на https://github.com/ervandew/supertab
-" ~~~vvv~~~
-
-" " Настраиваем 'умное' автодополнение по нажатию Tab:
-" " - если нечего дополнять, то используем Tab, как обычно
-" function! SmartTabComplete()
-"
-"     " Если меню с выбором уже открылось, перейти к следующему варианту
-"     if pumvisible()
-"         return "\<C-n>"
-"     endif
-"
-"     " Содержимое текущей строки
-"     let l:line = getline('.')
-"
-"     " Берём подстроку от начала текущей строки
-"     " и до положения курсора, но можно написать
-"     " и col('.') + 1, чтобы брать чуть больше
-"     let l:substr = strpart(l:line, -1, col('.'))
-"
-"     " Проверяем,состоит ли строка только из пробельных символов
-"     let l:substr = matchstr(l:substr, '[^ \t]*$')
-"
-"     if (strlen(l:substr) == 0)                          " nothing to match on empty string
-"         return "\<Tab>"
-"     endif
-"
-"     let l:has_period = match(l:substr, '\.') != -1      " position of period, if any
-"     let l:has_slash = match(l:substr, '\/') != -1       " position of slash, if any
-"
-"     if (!l:has_period && !l:has_slash)
-"         return "\<C-x>\<C-n>"                         " existing text matching
-"     elseif (l:has_slash)
-"         return "\<C-x>\<C-f>"                         " file matching
-"     else
-"         return "\<C-x>\<C-o>"                         " plugin matching
-"     endif
-" endfunction
-" " Взято с: https://vim.fandom.com/wiki/Smart_mapping_for_tab_completion
-" " Дополнил с помощью: https://stackoverflow.com/questions/9751540/omnicomplete-in-vim-with-shift-tab-not-working
-"
-" " Заменил <C-r>= перед названием функции
-" " на <expr> перед Tab, и удалил <CR> на конце
-" " (по сравнению с примерами по ссылкам выше)
-" inoremap <expr><Tab> SmartTabComplete()
-"
-" " Обратный скролл вариантов Tab на Shift+Tab (в том числе отмена первого изменения)
-" inoremap <expr><S-Tab> pumvisible() ? "\<C-p>" : "\<C-n>"
-"
 " Выбор дополнения по нажатию Enter, вместо перевода строки
 inoremap <expr><CR> pumvisible() ? "\<C-y>" : "\<C-g>u\<CR>"
-
-" ~~~^^^~~~
-" Перешёл на https://github.com/ervandew/supertab
-" ~~~~~~~~~
 
 " Вручную настраиваем типы файлов для дополнения omnifunc
 " (например: js, php, ruby, html, c, css, python)
@@ -422,6 +386,10 @@ set omnifunc=syntaxcomplete#Complete
 " и использующегося в нём языка программирования
 inoremap <C-space> <C-x><C-o>
 
+" Перешёл на https://github.com/ervandew/supertab
+" для автоматической подборки наиболее используемых
+" типов дополнений по нажатию клавиши Tab
+
 " Подробнее про автодополнения можно узнать, загуглив 'vim completion'
 " Ещё, можно установить YouCompleteMe или SuperTab.
 " Или даже поставить coc.nvim, как LSP, то есть универсальный протокол
@@ -430,6 +398,63 @@ inoremap <C-space> <C-x><C-o>
 " Я установил пока что только SuperTab :)
 
 " https://vim.fandom.com/wiki/Make_Vim_completion_popup_menu_work_just_like_in_an_IDE
+
+" -----------------------------
+" --- Грамматика и ------------
+" --- орфография в (Neo)Vim ---
+" -----------------------------
+
+" Проверка орфографии в Vim
+" https://superuser.com/questions/911412/how-to-configure-vim-spellcheck-to-use-two-languages
+" http://ashep.org/2010/proverka-pravopisaniya-v-vim/#.YBHvLNYenMU
+" set spell spelllang=en,ru
+
+augroup Lexical
+    autocmd!
+    autocmd FileType
+        \ markdown,mkd,md,text,txt,html,yaml,yml,toml,plaintex,tex,latex,sh,bash
+        \ setlocal spell spelllang=en,ru
+augroup END
+
+" Настройка и включение
+"
+" Для начала необходимо загрузить с ftp://ftp.vim.org/pub/vim/runtime/spell/ файлы словарей, соответственно языкам, регионам и кодировкам,
+" проверка правописания которых вам необходима.
+" Для меня пока что достаточно проверки русского в UTF-8 и поэтому я загрузил файлы ru.utf-8.spl и ru.utf-8.sug.
+" Скаченные файлы необходимо разместить в каталоге ~/.vim/spell.
+"
+" Собственно, на этом настройка правописания завершена и теперь осталось её включить. Делается это следующей командой в Vim:
+"
+" set spell spelllang=ru
+"
+" ru замените, если нужно, на код языка, правописание которого вам необходимо проверять. Если вам нужно, чтобы включение проверки правописания происходило автоматически при запуске Vim, добавьте приведённую строку в файл ~/.vimrc и/или в ~/.gvimrc по вашему вкусу. Вот, что должно получиться в итоге:
+
+" Работа с ошибками
+"
+" При помощи следующих команд Vim вы можете быстро перемещаться по словам, написанным с ошибками:
+"
+"     ]s — перемещает курсор на следующее слово с ошибкой;
+"     [s - перемещает курсор на предыдущее слово с ошибкой;
+"     ]S — то же, что и ]s, только курсор не будет останавливаться на словах, которые считаются неправильным для определённого региона выбранного языка;
+"     [S - то же, что и ]S, но в обратном направлении.
+"
+" Для добавления ошибочно написанных слов в ваш собственный список слов можно использовать следующие команды:
+"
+"     zg — добавляет слово, находящееся под курсором в spellfile;
+"     zG — то же, что и zg, однако слово будет добавлено в internal-wordlist;
+"     zw — то же, что и zg, однако слово будет помечено как ошибочно-написанное;
+"     zW — то же, что и zw, только слово будет добавлено в internal-wordlist;
+"
+" Чтобы отменить действие добавления слова, используйте команды:
+"
+"     zug и zuw — отменяет действие zg и zw соответственно;
+"     zuG и zuW — отменяет действие zG и zW соответственно;
+"
+" Для того, чтобы Vim показал вам предложения по исправлению ошибочно-написанного слова, используйте команду z=:
+
+" https://thoughtbot.com/blog/vim-spell-checking
+" https://thejakeharding.com/using-spell-check-in-vim
+" https://www.linux.com/training-tutorials/using-spell-checking-vim/
 
 " -----------------------------
 " --- Курсор и мышь -----------
@@ -475,6 +500,50 @@ autocmd InsertEnter,InsertLeave * set cursorline!
 " https://vim.fandom.com/wiki/Change_cursor_shape_in_different_modes
 
 " Или, использовать NeoVim, в котором этот пункт работает сразу, «из коробки»
+
+" -----------------------------
+" --- Комментирование ---------
+" --- и раскомментирование ----
+" --- строк в плагине ---------
+" --- NERDCommenter -----------
+" -----------------------------
+
+" Убираем стандартные сочетания клавиш
+let g:NERDCreateDefaultMappings = 0
+
+" Добавляем пробел после комментария
+let g:NERDSpaceDelims = 1
+
+" Используем компактный синтаксис
+let g:NERDCompactSexyComs = 1
+
+" Align line-wise comment delimiters flush left instead of following code indentation
+let g:NERDDefaultAlign = 'left'
+
+" Разрешаем комментировать пустые строки
+let g:NERDCommentEmptyLines = 1
+
+" Эта настройка будет удалять лишние пробелы после крайнего
+" непробельного символа в строке после раскомментирования
+" Лучше выключить, потому что эта Vim конфигурация и так сама
+" чистит файл (см. функция на ~528 строке)
+let g:NERDTrimTrailingWhitespace = 0
+
+" Разрешаем проверку на то, закомментирована строка или нет
+let g:NERDToggleCheckAllLines = 1
+
+" Комментировать и раскомментировать строку
+" в режиме NORMAL по нажатию Ctrl+/
+nmap <C-_> <Plug>NERDCommenterToggle
+
+" Аналогично, но для режима VISUAL
+vmap <C-_> <Plug>NERDCommenterToggle<CR>gv
+
+" Аналогично, но для INSERT
+" imap <C-_> <Esc><Plug>NERDCommenterTogglella
+
+" По какой-то причине, Vim видит нажатие Ctrl+/, как Ctrl+_
+" Подробнее смотри тут: https://stackoverflow.com/questions/9051837/how-to-map-c-to-toggle-comments-in-vim
 
 " -----------------------------
 " --- Настройка NERDTree: -----
@@ -668,6 +737,8 @@ let g:livepreview_cursorhold_recompile = 0
 " --- ``''<>[]{} и прочих -----
 " -----------------------------
 
+" Moved to tpope/vim-surround
+
 " TODO: check out https://github.com/tpope/vim-sexp-mappings-for-regular-people
 " noremap s <nop>  " (см выше)
 " TODO: check out https://github.com/tpope/vim-sexp-mappings-for-regular-people
@@ -683,21 +754,27 @@ let g:livepreview_cursorhold_recompile = 0
 " + https://github.com/kana/vim-operator-user
 
 " s, как surround
-map <silent>sa <Plug>(operator-surround-append)
-map <silent>sd <Plug>(operator-surround-delete)
-map <silent>sr <Plug>(operator-surround-replace)
+" map <silent>sa <Plug>(operator-surround-append)
+" map <silent>sd <Plug>(operator-surround-delete)
+" map <silent>sr <Plug>(operator-surround-replace)
 
 " Убираю стандартное поведение s с удаления символа и вставки на:
-map <silent>s <Plug>(operator-surround-append)
+" map <silent>s <Plug>(operator-surround-append)
+" sneak:
+" https://github.com/justinmk/vim-sneak
+let g:sneak#label = 1
+" map f <Plug>Sneak_s
+" map F <Plug>Sneak_S
 
 " if you use vim-textobj-multiblock
+"
 " nmap <silent>sdd <Plug>(operator-surround-delete)<Plug>(textobj-multiblock-a)
 " nmap <silent>srr <Plug>(operator-surround-replace)<Plug>(textobj-multiblock-a)
-" 
+"
 " " if you use vim-textobj-anyblock
 " nmap <silent>sdd <Plug>(operator-surround-delete)<Plug>(textobj-anyblock-a)
 " nmap <silent>srr <Plug>(operator-surround-replace)<Plug>(textobj-anyblock-a)
-" 
+"
 " " if you use vim-textobj-between
 " nmap <silent>sdb <Plug>(operator-surround-delete)<Plug>(textobj-between-a)
 " nmap <silent>srb <Plug>(operator-surround-replace)<Plug>(textobj-between-a)
@@ -867,9 +944,13 @@ endfunction
 " nnoremap <silent> <C-l> :call CleanupBeforeWrite()<CR>:w<CR>
 "
 " А лучше, поставить вместо раздражающей (меня) Shift+S
-nnoremap <silent> S :call CleanupBeforeWrite()<CR>:w<CR>
+" nnoremap <silent> S :call CleanupBeforeWrite()<CR>:w<CR>
 "   из VISUAL
-vnoremap <silent> S <Esc>:call CleanupBeforeWrite()<CR>:w<CR>gv
+" vnoremap <silent> S <Esc>:call CleanupBeforeWrite()<CR>:w<CR>gv
+
+" Поставил на F8, чтобы выделить место под sneak.vim (https://github.com/justinmk/vim-sneak)
+nnoremap <silent> <F8> :call CleanupBeforeWrite()<CR>:w<CR>
+vnoremap <silent> <F8> <Esc>:call CleanupBeforeWrite()<CR>:w<CR>gv
 
 " Прыжки между местами, в которых недавно были изменения.
 nnoremap <silent> <C-h> g;
@@ -986,8 +1067,9 @@ endif
 set updatetime=250
 " set updatetime=1000
 set autoread
-autocmd FocusGained,BufEnter,CursorHold,CursorHoldI * checktime
-" CursorMoved, CursorMovedI
+autocmd FocusGained,BufEnter * checktime
+" CursorHold,CursorHoldI
+" CursorMoved,CursorMovedI
 
 " Автоматическое добавление пустой строки
 " под конец файла средствами Vim, если таковая отсутствует
@@ -1067,6 +1149,10 @@ set encoding=utf8
 " Использование формата Unix (LF) по умолчанию
 set ffs=unix,dos,mac
 
+" show the matching part of the pair for [] {} and () after the insertion!
+" better disable it
+" set showmatch
+
 " Установка интерпретатора Python3,
 " использующегося в системе по умолчанию
 let g:python3_host_prog='/usr/bin/python3'
@@ -1082,6 +1168,9 @@ set t_Co=256
 " if !has('gui_running')
 "     set t_Co=256
 " endif
+
+" enable all Python syntax highlighting features
+let python_highlight_all = 1
 
 " Включение подсветки синтаксиса
 syntax enable
@@ -1132,10 +1221,9 @@ set background=dark
 " Потому что Morhetz прекратил коммитить в свой
 " основной репозиторий с gruvbox
 
-colorscheme gruvbox_community
-"gruvbox
-" let g:gruvbox_background = 'dark'
+"let g:gruvbox_community_contrast_dark = 'hard'
 let g:gruvbox_community_background = 'dark'
+colorscheme gruvbox_community
 
 " let g:gruvbox_contrast_dark='hard'
 " let g:gruvbox_contrast_light='hard'
@@ -1290,126 +1378,17 @@ let g:lightline.colorscheme = 'gruvbox_community'
 
 " abbreviate
 ab :computer: 💻
+" работает только в рамках одного ввода и только если
+" под конец поставить пробел
 
 " ab :ec: !# 'file.js' javascript
 " ab :ec: [embedmd]:# (file.js javascript)
 " https://github.com/campoy/embedmd
 
-" emojilib - make it real
-" работает только в рамках одного ввода и только если
-" под конец поставить пробел
-"
-" TODO:
-" Alt + left/right для переключения вкладок
-" В NeoVim работает Alt! Ю-ху!
-" Возможно, надо на Alt+Вверх/Вниз изменять числа (или ещё какие-нибудь операции над строками)
-"
-" Также, пора разделить файлик на две части, внизу указав всё для neovim'а / vim, если есть раздельное
-" vim:
-" neovim / vim
-" neovim specific (extras)
-" use qq or just q for Ctrl+w ???
-" JUST USE <M-C-Left><M-C-Right> for tab switch
-" and alt <Up><Down><Left><Right> to use  and switch windows
-" switch windows on alt + ...
-
-" shift+U for :redo???
-" tab — choose between completions
-" ctrl + space — highly unused
-" also check out new plugins
-"
 " J — for join
-" K — for break
+" K — for break (custom)
 " H — top of the screen (high)
 " L — bottom of the screen (low)
-
-" ------------------------------------------ TODO: lexical
-
-" Проверка орфографии в Vim
-" https://superuser.com/questions/911412/how-to-configure-vim-spellcheck-to-use-two-languages
-" http://ashep.org/2010/proverka-pravopisaniya-v-vim/#.YBHvLNYenMU
-" set spell spelllang=en,ru
-
-augroup Lexical
-    autocmd!
-    autocmd FileType
-        \ markdown,mkd,md,text,txt,html,yaml,yml,toml,plaintex,tex,latex,sh,bash
-        \ setlocal spell spelllang=en,ru
-augroup END
-
-" Настройка и включение
-"
-" Для начала необходимо загрузить с ftp://ftp.vim.org/pub/vim/runtime/spell/ файлы словарей, соответственно языкам, регионам и кодировкам,
-" проверка правописания которых вам необходима.
-" Для меня пока что достаточно проверки русского в UTF-8 и поэтому я загрузил файлы ru.utf-8.spl и ru.utf-8.sug.
-" Скаченные файлы необходимо разместить в каталоге ~/.vim/spell.
-"
-" Собственно, на этом настройка правописания завершена и теперь осталось её включить. Делается это следующей командой в Vim:
-"
-" set spell spelllang=ru
-"
-" ru замените, если нужно, на код языка, правописание которого вам необходимо проверять. Если вам нужно, чтобы включение проверки правописания происходило автоматически при запуске Vim, добавьте приведённую строку в файл ~/.vimrc и/или в ~/.gvimrc по вашему вкусу. Вот, что должно получиться в итоге:
-
-" Работа с ошибками
-"
-" При помощи следующих команд Vim вы можете быстро перемещаться по словам, написанным с ошибками:
-"
-"     ]s — перемещает курсор на следующее слово с ошибкой;
-"     [s - перемещает курсор на предыдущее слово с ошибкой;
-"     ]S — то же, что и ]s, только курсор не будет останавливаться на словах, которые считаются неправильным для определённого региона выбранного языка;
-"     [S - то же, что и ]S, но в обратном направлении.
-"
-" Для добавления ошибочно написанных слов в ваш собственный список слов можно использовать следующие команды:
-"
-"     zg — добавляет слово, находящееся под курсором в spellfile;
-"     zG — то же, что и zg, однако слово будет добавлено в internal-wordlist;
-"     zw — то же, что и zg, однако слово будет помечено как ошибочно-написанное;
-"     zW — то же, что и zw, только слово будет добавлено в internal-wordlist;
-"
-" Чтобы отменить действие добавления слова, используйте команды:
-"
-"     zug и zuw — отменяет действие zg и zw соответственно;
-"     zuG и zuW — отменяет действие zG и zW соответственно;
-"
-" Для того, чтобы Vim показал вам предложения по исправлению ошибочно-написанного слова, используйте команду z=:
-
-" https://thoughtbot.com/blog/vim-spell-checking
-" https://thejakeharding.com/using-spell-check-in-vim
-" https://www.linux.com/training-tutorials/using-spell-checking-vim/
-
-" -------------------------- TODO: /lexical
-
-" -------------------------- TODO: fold
-
-set foldmethod=indent
-" Default (and max) is 20
-" set foldnestmax=10
-" Make folds, but don't close them by default
-set nofoldenable
-set foldlevel=10
-
-" The command zc will close a fold (if the cursor is in an open fold),
-" and zo will open a fold (if the cursor is in a closed fold).
-" It's easier to just use za which will toggle the current fold (close it if it was open, or open it if it was closed).
-"
-" The commands zc (close), zo (open), and za (toggle) operate on one level of folding, at the cursor.
-" The commands zC, zO and zA are similar, but operate on all folding levels
-" (for example, the cursor line may be in an open fold, which is inside another open fold; typing zC would close all folds at the cursor).
-"
-" The command zr reduces folding by opening one more level of folds throughout the whole buffer
-" (the cursor position is not relevant). Use zR to open all folds.
-"
-" The command zm gives more folding by closing one more level of folds throughout the whole buffer.
-" Use zM to close all folds.
-"
-" https://www.linux.com/training-tutorials/vim-tips-folding-fun/
-" :help z
-" https://unix.stackexchange.com/questions/141097/how-to-enable-and-use-code-folding-in-vim
-" https://vim.fandom.com/wiki/Folding
-" augroup folding
-"   au BufReadPre * setlocal foldmethod=indent
-"   au BufWinEnter * if &fdm == 'indent' | setlocal foldmethod=manual | endif
-" augroup END
 
 " :lcd %:p:h
 " https://vim.fandom.com/wiki/Set_working_directory_to_the_current_file
@@ -1439,24 +1418,6 @@ set foldlevel=10
 
 let g:vim_jsx_pretty_colorful_config = 1 " default 0
 
-" ctrl+f to fold / unfold everything (toggle)
-" https://unix.stackexchange.com/questions/46827/vim-executing-a-key-command-in-a-function
-" https://vi.stackexchange.com/questions/20206/using-a-special-key-in-function
-let s:everyfold_is_open = 1
-function! EveryFoldIsOpen()
-    if s:everyfold_is_open == 1
-        let s:everyfold_is_open = 0
-        execute "normal zM"
-    else
-        let s:everyfold_is_open = 1
-        execute "normal zR"
-    endif
-endfunction
-
-nnoremap <silent> <C-f> :call EveryFoldIsOpen()<CR>
-
-" -------------------------- TODO: /fold
-
 " using
 " https://github.com/gko/vim-coloresque
 " instead of:
@@ -1481,11 +1442,11 @@ let g:expand_region_text_objects = {
     \ 'ie'  :0,
     \ }
 
-""
+"" ----
 """" -------------------------
 """ Отличия между Vim и NeoVim
 """" -------------------------
-""
+"" ----
 
 if has('nvim')
     " -----------------------------
@@ -1593,3 +1554,9 @@ endif
 
 " (neo)vim — sane defaults (this file)
 " Add some guiding to it (basic operations, philosophy, keystrokes
+
+map <MiddleMouse> <Nop>
+imap <MiddleMouse> <Nop>
+
+" https://github.com/search?o=desc&q=vim+selection&s=stars&type=Repositories
+" https://github.com/neovim/neovim/wiki/Related-projects#plugins
