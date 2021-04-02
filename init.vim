@@ -758,13 +758,8 @@ let g:livepreview_cursorhold_recompile = 0
 " map <silent>sd <Plug>(operator-surround-delete)
 " map <silent>sr <Plug>(operator-surround-replace)
 
-" Убираю стандартное поведение s с удаления символа и вставки на:
-" map <silent>s <Plug>(operator-surround-append)
-" sneak:
-" https://github.com/justinmk/vim-sneak
-let g:sneak#label = 1
-" map f <Plug>Sneak_s
-" map F <Plug>Sneak_S
+" only for visual
+vmap <silent>s <Plug>(operator-surround-append)
 
 " if you use vim-textobj-multiblock
 "
@@ -778,6 +773,13 @@ let g:sneak#label = 1
 " " if you use vim-textobj-between
 " nmap <silent>sdb <Plug>(operator-surround-delete)<Plug>(textobj-between-a)
 " nmap <silent>srb <Plug>(operator-surround-replace)<Plug>(textobj-between-a)
+
+" Убираю стандартное поведение s с удаления символа и вставки на:
+" map <silent>s <Plug>(operator-surround-append)
+" sneak:
+" https://github.com/justinmk/vim-sneak
+"
+" let g:sneak#label = 1
 
 " -----------------------------
 " --- Рукотворный плагин ------
@@ -1063,13 +1065,36 @@ endif
 "vmap <F7> "*y
 "map <S-F7> :r!xclip -o<CR>
 
-" Автообновление, при изменении файла извне
+" Задержка, перед автообновлением содержимого буфера (загруженного файла в
+" Vim)
+" По умолчанию равна 4000 мс, т.е. 4 секундам
 set updatetime=250
-" set updatetime=1000
+
+" Автообновление текущего буфера (текущего файла) при:
+" - использовании :checktime
+" - открытия нового буфера
+" - использовании :diffupdate
+" - использовании :e для файла, для которого уже используется буфер
+" - исполнении внешней команды через !
+" - (^Z, fg), т.е. вывод Vim из фона
 set autoread
-autocmd FocusGained,BufEnter * checktime
-" CursorHold,CursorHoldI
+
+" Запрос checktime, чтобы вызвать автообновление текущего буфера.
+" Будет выполнен, при получении фокуса, открытии нового буфера и остановке
+" курсора.
+autocmd FocusGained,BufEnter,CursorHold,CursorHoldI * checktime
+
 " CursorMoved,CursorMovedI
+
+
+" Also, it makes sense to use it in combination with the following snippet so that the files are always saved when leaving a buffer or vim, avoiding conflict situations:
+"
+" au FocusLost,WinLeave * :silent! w
+" 
+" EDIT: If you want to speed up the write by disabling any hooks that run on save (e.g. linters), you can prefix the w command with noautocmd:
+" 
+" au FocusLost,WinLeave * :silent! noautocmd w
+ 
 
 " Автоматическое добавление пустой строки
 " под конец файла средствами Vim, если таковая отсутствует
@@ -1170,7 +1195,7 @@ set t_Co=256
 " endif
 
 " enable all Python syntax highlighting features
-let python_highlight_all = 1
+" let python_highlight_all = 1
 
 " Включение подсветки синтаксиса
 syntax enable
@@ -1472,6 +1497,12 @@ if has('nvim')
 
     " Выходим из терминала по нажатию Escape
     tnoremap <Esc> <C-\><C-n>
+
+    " Alt+WASD передвижения
+    noremap <A-a> h
+    noremap <A-s> j
+    noremap <A-w> k
+    noremap <A-d> l
 
     " tnoremap <A-h> <C-\><C-N><C-w>h
     " tnoremap <A-j> <C-\><C-N><C-w>j

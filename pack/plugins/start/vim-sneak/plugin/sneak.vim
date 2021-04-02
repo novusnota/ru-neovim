@@ -35,7 +35,7 @@ func! sneak#init() abort
       \ ,'map_netrw'    : get(g:, 'sneak#map_netrw', 1)
       \ ,'label'        : get(g:, 'sneak#label', get(g:, 'sneak#streak', 0)) && (v:version >= 703) && has("conceal")
       \ ,'label_esc'    : get(g:, 'sneak#label_esc', get(g:, 'sneak#streak_esc', "\<space>"))
-      \ ,'prompt'       : get(g:, 'sneak#prompt', '>')
+      \ ,'prompt'       : get(g:, 'sneak#prompt', 'sneak> ')
       \ }
 
   for k in ['f', 't'] "if user mapped f/t to Sneak, then disable f/t reset.
